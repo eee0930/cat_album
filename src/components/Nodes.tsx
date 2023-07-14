@@ -1,44 +1,15 @@
 import { useRecoilState } from 'recoil';
-import { fetchDirOrFilesById } from '../api';
+import { useEffect, useRef, useState } from 'react';
+import { fetchDirOrFilesById, INodeData } from '../api';
 import { nowNodeState, INowNode, categoriesState, ICategories } from '../atoms';
-import { useEffect, useState } from 'react';
+// components
 import { File, Directory } from './Node';
 import { Modal, Loading } from './Modal';
 // styles
 import { NodeList, Prev } from '../utils/nodeStyles';
+import { getDatas, saveDatas } from '../hooks/handleLocalStorage';
+import { handleError } from '../hooks/handleError';
 
-interface IDirDatas {
-  [key: string]: INodeData[];
-}
-
-interface INodeData {
-  id: string;
-  name: string;
-  type: 'FILE' | 'DIRECTORY';
-  filePath: string | null;
-  parent: {
-    id: string;
-  } | null;
-}
-const saveDatas = (id: string, datas: INodeData[]) => {
-  if (id === '0') {
-    localStorage.setItem('rootNodes', JSON.stringify(datas));
-  } else {
-    const dirNodes = localStorage.getItem('dirNodes');
-    if (dirNodes) {
-      const parcedNodes = JSON.parse(dirNodes);
-      if (parcedNodes[id] === undefined) {
-        parcedNodes[id] = datas;
-        localStorage.setItem('dirNodes', JSON.stringify(parcedNodes));
-      }
-    } else {
-      const nowNodes = {} as IDirDatas;
-      nowNodes[id] = datas;
-      localStorage.setItem('dirNodes', JSON.stringify(nowNodes));
-    }
-  }
-};
-const getDatas = (id: string) => {};
 function Nodes() {
   const [nowNode, setNowNode] = useRecoilState<INowNode>(nowNodeState);
   const [categories, setCategories] =
@@ -46,22 +17,36 @@ function Nodes() {
   const [nodeList, setNodeList] = useState<INodeData[]>();
   const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [imagePath, setImagePath] = useState<string | null>('');
+  const [imagePath, setImagePath] = useState('');
+  const nodeListContainer = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const getNodeList = async (id: string | null) => {
-      setIsLoading(true);
-      let nodes;
-      if (id) {
-        nodes = (await fetchDirOrFilesById(id)) as INodeData[];
-      } else {
-        nodes = (await fetchDirOrFilesById(null)) as INodeData[];
-      }
-      setNodeList(nodes);
-      setIsLoading(false);
-    };
     getNodeList(nowNode.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nowNode]);
+
+  const getNodeList = async (id: string) => {
+    setIsLoading(true);
+    let nodes;
+    if (!!getDatas(id)) {
+      nodes = getDatas(id);
+    } else {
+      const fetchedData = (await fetchDirOrFilesById(id)) as INodeData[];
+      if (!!fetchedData) {
+        nodes = fetchedData;
+        saveDatas(id, nodes);
+      } else {
+        if (nodeListContainer.current) {
+          console.log('에러닷 에러!!!⭐️');
+          handleError(nodeListContainer.current, getNodeList);
+        }
+        setIsLoading(false);
+        return;
+      }
+    }
+    setNodeList(nodes);
+    setIsLoading(false);
+  };
 
   const handleClickPrev = () => {
     const nowCategories = [...categories];
@@ -69,9 +54,8 @@ function Nodes() {
     setCategories(nowCategories);
     setNowNode(nowCategories[nowCategories.length - 1]);
   };
-  const setImageModal = (filePath: string | null) => {
+  const settingImageModal = (filePath: string) => {
     setImagePath(filePath);
-    console.log(filePath);
     setIsModalOpen(true);
   };
   const openModal = (modalOpen: boolean) => {
@@ -87,6 +71,7 @@ function Nodes() {
       name,
     };
     setNowNode(newNode);
+    setCategories((prev) => [...prev, newNode]);
   };
   return (
     <>
@@ -94,9 +79,9 @@ function Nodes() {
         <Loading />
       ) : (
         <>
-          <NodeList>
+          <NodeList ref={nodeListContainer}>
             <>
-              {nowNode.id !== null && (
+              {nowNode.id !== '0' && (
                 <Prev onClick={handleClickPrev}>
                   <img
                     src={`${process.env.PUBLIC_URL}/img/prev.png`}
@@ -104,21 +89,21 @@ function Nodes() {
                   />
                 </Prev>
               )}
-              {nodeList &&
-                nodeList.map((node) => {
+              {nodeList !== undefined &&
+                nodeList.map((node, i) => {
                   if (node.type === 'FILE') {
                     return (
                       <File
-                        key={node.id}
+                        key={i}
                         name={node.name}
                         filePath={node.filePath}
-                        callback={setImageModal}
+                        callback={settingImageModal}
                       />
                     );
                   } else {
                     return (
                       <Directory
-                        key={node.id}
+                        key={i}
                         id={node.id}
                         name={node.name}
                         callback={getNextDirectories}

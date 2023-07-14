@@ -14,6 +14,7 @@ export const NodeEle = styled.div`
   margin: 2px;
   text-align: center;
   font-size: 14px;
+  font-weight: 600;
   display: flex;
   flex-direction: column;
   word-break: keep-all;

@@ -1,6 +1,6 @@
 import { styled } from 'styled-components';
 
-export const BreadCrumb = styled.div`
+export const BreadCrumbContainer = styled.div`
   height: 62px;
   padding: 16px;
   border-bottom: 4px solid ${(props) => props.theme.borderColor};

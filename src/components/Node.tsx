@@ -2,8 +2,8 @@ import { NodeEle } from '../utils/nodeStyles';
 
 interface IFile {
   name: string;
-  filePath: string | null;
-  callback: (filePath: string | null) => void;
+  filePath: string;
+  callback: (filePath: string) => void;
 }
 export function File({ name, filePath, callback }: IFile) {
   return (
