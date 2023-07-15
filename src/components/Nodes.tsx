@@ -36,11 +36,11 @@ function Nodes() {
         nodes = fetchedData;
         saveDatas(id, nodes);
       } else {
+        setIsLoading(false);
         if (nodeListContainer.current) {
           console.log('에러닷 에러!!!⭐️');
           handleError(nodeListContainer.current, getNodeList);
         }
-        setIsLoading(false);
         return;
       }
     }
